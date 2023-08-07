@@ -395,5 +395,8 @@ public class NinjaPropertiesImpl implements NinjaProperties {
             return defaultValue;
         }
     }
-    
+
+    public CompositeConfiguration getUnderlyingCompositeConfiguration() {
+        return compositeConfiguration;
+    }
 }
