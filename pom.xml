@@ -22,7 +22,7 @@
     <groupId>org.ninjaframework</groupId>
     <artifactId>ninja</artifactId>
     <packaging>pom</packaging>
-    <version>7.0.0</version>
+    <version>7.0.0-mangomint</version>
     <url>https://www.ninjaframework.org</url>
     <name>${project.artifactId}</name>
     <description>Ninja is a full stack web framework for Java.
@@ -286,13 +286,10 @@
     </mailingLists>
 
     <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
         <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/mangomint/ninja</url>
         </repository>
     </distributionManagement>
 
