@@ -89,6 +89,32 @@ public class LambdasTest {
             return Long.toString(calculated);
         }
     }
+
+    static public class TransformTarget {
+        public String transform(@Param("value") Long value) {
+            return value.toString();
+        }
+    }
+
+    // Mimics the static adapter Kotlin 2.4 generates for an unbound instance
+    // method reference adapted to a SAM interface.
+    static private String init$transform(TransformTarget receiver, Long value) {
+        return receiver.transform(value);
+    }
+
+    @Test
+    public void unwrapsKotlinSamAdapterToAnnotatedTargetMethod() throws Exception {
+        Method adapter = LambdasTest.class.getDeclaredMethod(
+            "init$transform", TransformTarget.class, Long.class);
+
+        Method unwrapped = Lambdas.unwrapKotlinSamAdapter(adapter);
+
+        assertThat(unwrapped.getName(), is("transform"));
+        assertThat(unwrapped.getDeclaringClass(), is(TransformTarget.class));
+        assertThat(
+            unwrapped.getParameterAnnotations()[0][0].annotationType(),
+            is(Param.class));
+    }
     
     @Test
     public void specificInstanceMethodReference() throws Exception {
