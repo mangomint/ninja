@@ -19,6 +19,8 @@ package ninja.utils;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -182,8 +184,53 @@ public class Lambdas {
     }
     
     public static Method getImplementationMethod(SerializedLambda serializedLambda) throws NoSuchMethodException, ClassNotFoundException {
-        return getMethod(serializedLambda.getImplClass(),
+        Method implementationMethod = getMethod(serializedLambda.getImplClass(),
             serializedLambda.getImplMethodName());
+        return unwrapKotlinSamAdapter(implementationMethod);
+    }
+
+    /**
+     * Kotlin 2.4 compiles an unbound instance method reference adapted to a Java
+     * SAM interface into a synthetic static adapter method named
+     * {@code <enclosing-function>$<target-method>}. The adapter's first parameter
+     * is the receiver, and the remaining parameters match the target method.
+     *
+     * <p>The adapter does not carry the target method's parameter annotations, so
+     * Ninja must resolve the original method to keep argument extraction working.
+     * Otherwise every annotated controller parameter, such as
+     * {@code @LoggedInCompanyId}, is treated as unannotated.
+     */
+    static Method unwrapKotlinSamAdapter(Method implementationMethod) {
+        if (!Modifier.isStatic(implementationMethod.getModifiers())) {
+            return implementationMethod;
+        }
+
+        String methodName = implementationMethod.getName();
+        int separator = methodName.lastIndexOf('$');
+        if (separator <= 0 || separator == methodName.length() - 1) {
+            return implementationMethod;
+        }
+
+        Class<?>[] parameterTypes = implementationMethod.getParameterTypes();
+        if (parameterTypes.length == 0 || parameterTypes[0].isPrimitive()) {
+            return implementationMethod;
+        }
+
+        Class<?> receiverType = parameterTypes[0];
+        String targetMethodName = methodName.substring(separator + 1);
+        Class<?>[] targetParameterTypes = Arrays.copyOfRange(parameterTypes, 1, parameterTypes.length);
+
+        try {
+            Method targetMethod = receiverType.getDeclaredMethod(targetMethodName, targetParameterTypes);
+            if (targetMethod.getReturnType().equals(implementationMethod.getReturnType())) {
+                targetMethod.setAccessible(true);
+                return targetMethod;
+            }
+        } catch (NoSuchMethodException e) {
+            // Not a Kotlin SAM adapter (or a static method reference); keep the original method.
+        }
+
+        return implementationMethod;
     }
     
     public static Method getMethod(String className, String methodName) throws NoSuchMethodException, ClassNotFoundException {
